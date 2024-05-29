@@ -39,7 +39,7 @@ export function sketch() {
         floor: -1,
     };
 
-    //debug random night/day
+    //debug random night/day xxx
     if (Math.random() > .5) p.night = true
 
     let lanceColor
@@ -88,6 +88,8 @@ export function sketch() {
         roughness: 1,
         metalness: 0,
         fog: true,
+        transparent: true,
+        opacity: .5
 
     })
     fireFlyMate = new THREE.MeshStandardMaterial({
@@ -245,7 +247,10 @@ export function sketch() {
     let t0 = Math.random() * 10
 
     // Parametri del flowfield
-    const flowfieldResolution = Math.floor(numRows * numCols);
+    let num
+    if (numRows >= numCols) num = numRows
+    else num = numCols 
+    const flowfieldResolution = Math.floor(num);
     const flowfieldScale = 0.1;
 
     // Funzione per generare il flowfield utilizzando noise3D
@@ -273,11 +278,11 @@ export function sketch() {
             const cellZ = Math.floor((position.z + 10) / 20 * flowfieldResolution);
 
             // Verifica che gli indici siano all'interno dei limiti del flowfield
-            if (cellX >= 0 && cellX < flowfieldResolution && cellZ >= 0 && cellZ < flowfieldResolution) {
+            // if (cellX >= 0 && cellX < flowfieldResolution && cellZ >= 0 && cellZ < flowfieldResolution) {
                 const windDirection = flowField[cellX][cellZ];
                 const windForce = windDirection.scale(windStrength);
                 lance.body.applyForce(windForce, new CANNON.Vec3(0, 1, 0));
-            }
+            // }
         }
     }
 
