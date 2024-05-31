@@ -1,3 +1,5 @@
+// CAUSTIC + GRIFFIN
+
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
 import { Reflector } from 'three/examples/jsm/objects/Reflector.js'
 
@@ -6,9 +8,11 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
 import { RectAreaLightHelper } from 'three/addons/helpers/RectAreaLightHelper.js';
 import { RectAreaLightUniformsLib } from 'three/addons/lights/RectAreaLightUniformsLib.js';
 
-let scene
-let groundMate, mirrorMate, griffinMate, fireFlyMate
+let scene, camera
+let groundMate, mirrorMate, griffinMate, fireFlyMate, griffin
 let groundGeom, reflectorBackGeom
+let rectLight, rectLightHelper, spotLight, light
+let fireFlyGeom, fireFlyLight
 let mirrorBack // reflector
 let animation
 let onWindowResize
@@ -46,7 +50,7 @@ export function sketch() {
     let shadowMapWidth = 2048, shadowMapHeight = 2048
     let paused = false;
 
-    let camera = new THREE.PerspectiveCamera(p.camera, window.innerWidth / window.innerHeight, near, far)
+    camera = new THREE.PerspectiveCamera(p.camera, window.innerWidth / window.innerHeight, near, far)
     camera.position.copy(p.cameraPosition)
     camera.lookAt(p.lookAtCenter)
 
@@ -66,7 +70,7 @@ export function sketch() {
     controls.minDistance = 1
     controls.maxDistance = 6.5
     controls.maxPolarAngle = Math.PI / 2 + 0.2
-    controls.minPolarAngle = Math.PI / 2 - 0.4
+    controls.minPolarAngle = 0
     controls.autoRotate = p.autoRotate
     controls.autoRotateSpeed = p.autoRotateSpeed
     controls.target = p.lookAtCenter
@@ -125,7 +129,7 @@ export function sketch() {
     // Let's load our low poly human
     //GLTFLoader
     let gltfLoaded = false
-    let griffin
+    griffin
     loaderGLTF = new GLTFLoader()
     loaderGLTF.load(
         // resource URL
@@ -193,7 +197,7 @@ export function sketch() {
     scene.add(mirrorBack)
     // let's make the mirror backside to do a shadow
     reflectorBackGeom = new THREE.PlaneGeometry(mirrorW, mirrorH)
-    let reflectorBack = new THREE.Mesh(reflectorBackGeom, mirrorMate)
+    const reflectorBack = new THREE.Mesh(reflectorBackGeom, mirrorMate)
     reflectorBack.rotation.x = p.mirrorInclination
     reflectorBack.position.y = p.floor + mirrorH / 2
     reflectorBack.position.z = 3.05
@@ -203,11 +207,11 @@ export function sketch() {
     // let's make some light below the mirror...
     RectAreaLightUniformsLib.init();
     let rectLightIntensity = 30
-    const rectLight = new THREE.RectAreaLight(0xffffff, rectLightIntensity, mirrorW + 0.025, mirrorH + 0.025)
+    rectLight = new THREE.RectAreaLight(0xffffff, rectLightIntensity, mirrorW + 0.025, mirrorH + 0.025)
     rectLight.position.set(0, p.floor + mirrorH / 2, 3.025)
     rectLight.rotation.x = p.mirrorInclination
     scene.add(rectLight)
-    const rectLightHelper = new RectAreaLightHelper(rectLight)
+    rectLightHelper = new RectAreaLightHelper(rectLight)
     rectLight.add(rectLightHelper)
 
     const video = document.getElementById('video');
@@ -219,7 +223,7 @@ export function sketch() {
     const texture = new THREE.VideoTexture(video);
     // texture.colorSpace = THREE.SRGBColorSpace;
     // texture.needsUpdate = true;
-    const spotLight = new THREE.SpotLight(0xbbbbff, 20);
+    spotLight = new THREE.SpotLight(0xbbbbff, 20);
     // spotLight.distance = 50;
     // spotLight.intensity = 1;
     // spotLight.decay = 0;
@@ -238,14 +242,14 @@ export function sketch() {
     // scene.add(spotlightHelper);
 
     // FIREFLIES
-    const fireFlyGeom = new THREE.SphereGeometry(.005, 4, 4)
+    fireFlyGeom = new THREE.SphereGeometry(.005, 4, 4)
     const fireFly = new THREE.Mesh(fireFlyGeom, fireFlyMate)
-    const fireFlyLight = new THREE.PointLight(0xff0000, 40, 5);
+    fireFlyLight = new THREE.PointLight(0xff0000, 40, 5);
     fireFlyLight.castShadow = true;
     scene.add(fireFlyLight);
     scene.add(fireFly)
 
-    const light = new THREE.DirectionalLight(p.background, 15)
+    light = new THREE.DirectionalLight(p.background, 15)
     light.position.set(0, 4, -10)
     light.castShadow = true
     light.shadow.radius = 8
@@ -272,6 +276,20 @@ export function sketch() {
     // nameFolder.open()
     // ...
 
+
+
+    const steadycamFlowSpeed = .03; // Adjust this value to change the speed of the steadycam flow
+    const steadycamFlowAmplitude = 0.01; // Adjust this value to change the amplitude of the steadycam flow
+    let steadycamFlowTime = 0;
+    function clamp(value, min, max) {
+        return Math.min(Math.max(value, min), max);
+    }
+    const steadycamBounds = {
+        x: { min: -2, max: 1.3 },
+        y: { min: 0, max: 1 },
+        z: { min: -6.5, max: -4.5 }
+    };
+
     // NOISE
     noise3D = NOISE.createNoise3D()
     let t0 = Math.random() * 10
@@ -281,7 +299,6 @@ export function sketch() {
     // ANIMATE
     const animate = () => {
         if (showStats) stats.begin() // XXX
-        controls.update()
 
         if (!paused) {
 
@@ -298,8 +315,33 @@ export function sketch() {
             fireFly.position.z = -5 - noise3D(0, 0, t2 + 8) * 3
             fireFlyLight.position.copy(fireFly.position)
 
+            // Update steadycam flow time
+            steadycamFlowTime += dt * steadycamFlowSpeed;
+
+            // Calculate steadycam flow offsets using noise functions
+            const steadycamFlowX = noise3D(steadycamFlowTime, 0, 0) * steadycamFlowAmplitude;
+            const steadycamFlowY = noise3D(0, steadycamFlowTime, 0) * steadycamFlowAmplitude;
+            const steadycamFlowZ = noise3D(0, 0, steadycamFlowTime) * steadycamFlowAmplitude;
+
+            // Apply steadycam flow to camera position if not in drag mode
+            if (!controls.isDragging) {
+                // const cameraPosition = controls.object.position.clone();
+                // cameraPosition.add(new THREE.Vector3(steadycamFlowX, steadycamFlowY, steadycamFlowZ));
+                // controls.object.position.copy(cameraPosition);
+                const cameraPosition = controls.object.position.clone();
+                cameraPosition.add(new THREE.Vector3(steadycamFlowX, steadycamFlowY, steadycamFlowZ));
+
+                // Clamp the camera position within the defined boundaries
+                cameraPosition.x = clamp(cameraPosition.x, steadycamBounds.x.min, steadycamBounds.x.max);
+                cameraPosition.y = clamp(cameraPosition.y, steadycamBounds.y.min, steadycamBounds.y.max);
+                cameraPosition.z = clamp(cameraPosition.z, steadycamBounds.z.min, steadycamBounds.z.max);
+
+                controls.object.position.copy(cameraPosition);
+            }
+
         }
 
+        controls.update()
         renderer.render(scene, camera) // RENDER
         if (showStats) stats.end() // XXX
 
@@ -313,12 +355,37 @@ export function dispose() {
     controls?.dispose()
     groundGeom?.dispose()
     fireFlyMate?.dispose()
+    fireFlyGeom?.dispose();
     reflectorBackGeom?.dispose()
     groundMate?.dispose()
     mirrorMate?.dispose()
     griffinMate?.dispose()
     mirrorBack?.dispose()
     noise3D = null
+    if (griffin) {
+        griffin.traverse((child) => {
+            if (child.isMesh) {
+                child.geometry.dispose();
+                child.material.dispose();
+            }
+        });
+        scene.remove(griffin);
+    }
+    scene.traverse((child) => {
+        if (child.geometry) {
+            child.geometry.dispose();
+        }
+        if (child.material) {
+            child.material.dispose();
+        }
+    });
+    rectLight?.dispose();
+    rectLightHelper?.dispose();
+    light?.dispose();
+    fireFlyLight?.dispose();
+    spotLight?.dispose();
+    camera = null
+    mixer?.uncacheRoot(mixer.getRoot());
     // gui?.destroy()
     // ...
     window.removeEventListener('resize', onWindowResize)

@@ -1,17 +1,14 @@
-// CLOTH
+//TEST CLOTH 8 VERTICES AND ROTATION
 
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
-let scene, camera, animation, onWindowResize, controls, onMouseMove
+let scene, animation, onWindowResize, controls, onMouseMove
 let groundGeom
-let groundMate, clothMaterial, mirrorMate, clothGeometry
-let world, groundBody
+let groundMate, clothMaterial, mirrorMate
+let world
 let noise3D
 let cloth, clothParticles, constraints = []
 let flowField
-let light, lightD, ambientLight
-const anchorBodies = [];
-const vertices = [];
 
 export function sketch() {
 
@@ -27,7 +24,7 @@ export function sketch() {
         clothWidth: 10,
         clothHeight: 10,
         clothResolution: 22,
-        // viewgf
+        // view
         lookAtCenter: new THREE.Vector3(0, 5, 3),
         cameraPosition: new THREE.Vector3(0, 1, - 7 - Math.random() * 25),
         autoRotate: false,
@@ -36,7 +33,7 @@ export function sketch() {
         // world
         background: new THREE.Color(0x000000),
         clothMass: 1,
-        gravity: -18,
+        gravity: (0, -18, 0),
         wind: true,
         windStrength: 2 + Math.random() * 8,
         floor: -2,
@@ -48,7 +45,7 @@ export function sketch() {
     let paused = false;
 
     // CAMERA
-    camera = new THREE.PerspectiveCamera(p.camera, window.innerWidth / window.innerHeight, near, far)
+    let camera = new THREE.PerspectiveCamera(p.camera, window.innerWidth / window.innerHeight, near, far)
     camera.position.copy(p.cameraPosition)
     camera.lookAt(p.lookAtCenter)
 
@@ -86,7 +83,7 @@ export function sketch() {
     ground.castShadow = false
     ground.receiveShadow = true
     scene.add(ground)
-    groundBody = new CANNON.Body({
+    const groundBody = new CANNON.Body({
         position: new CANNON.Vec3(0, p.floor - 1, 0),
         mass: 0,
         shape: new CANNON.Plane(),
@@ -115,7 +112,7 @@ export function sketch() {
     const cHeight = p.clothHeight
     const Nx = p.clothResolution
     const Ny = p.clothResolution
-    clothGeometry = new THREE.PlaneGeometry(cWidth, cHeight, Nx, Ny)
+    const clothGeometry = new THREE.PlaneGeometry(cWidth, cHeight, Nx, Ny)
     mirrorMate = new THREE.MeshPhongMaterial({
         color: 0x444444,
         envMap: cubeTextures[0].texture,
@@ -187,13 +184,26 @@ export function sketch() {
     }
 
     // Aggiungi le corde elastiche
-    const anchorDistance = 2;
+    const anchorDistance = 9;
     const anchorPoints = [
-        // new CANNON.Vec3(-cWidth / 2, p.floor + anchorDistance, -cHeight / 2),
-        // new CANNON.Vec3(cWidth / 2, p.floor + anchorDistance, -cHeight / 2),
-        new CANNON.Vec3(cWidth / 2 + .2, p.floor + cHeight + 6 + anchorDistance, cHeight / 2),
-        new CANNON.Vec3(-cWidth / 2 - .2, p.floor + cHeight + 6 + anchorDistance, cHeight / 2),
+        // Angoli superiori
+        new CANNON.Vec3(cWidth / 2 + 5, p.floor + cHeight + 6 + anchorDistance, cHeight / 2 - 7),
+        new CANNON.Vec3(-cWidth / 2 - 5, p.floor + cHeight + 6 + anchorDistance, cHeight / 2 - 7),
+        // Angoli inferiori
+        new CANNON.Vec3(cWidth / 2 + 5, p.floor + 1, cHeight / 2 - 10),
+        new CANNON.Vec3(-cWidth / 2 - 5, p.floor + 1, cHeight / 2 - 10),
+        // Vertice a metà altezza su laterale 1
+        new CANNON.Vec3(cWidth / 2 + 10, cHeight / 2, cHeight / 2 - 1),
+        // Vertice a metà altezza su laterale 2
+        new CANNON.Vec3(-cWidth / 2 - 10, cHeight / 2, cHeight / 2 -1),
+        // Vertice a metà larghezza sotto
+        new CANNON.Vec3(cWidth / 2, p.floor - 1, cHeight / 2 ),
+        // Vertice a metà larghezza sopra
+        new CANNON.Vec3(cWidth / 2, p.floor + cHeight + 7 + anchorDistance, cHeight / 2),
+    
     ];
+
+    const anchorBodies = [];
     anchorPoints.forEach((point) => {
         const anchorBody = new CANNON.Body({
             mass: 0,
@@ -204,11 +214,25 @@ export function sketch() {
         world.addBody(anchorBody);
     });
 
+
+    //in questo blocco ho aggiunto i nuovi 4 vetrici con le coordinate
     const cornerParticles = [
-        // clothParticles[0][0],
-        // clothParticles[Nx][0],
+        // Angoli superiori
         clothParticles[Nx][Ny],
         clothParticles[0][Ny],
+        // Angoli inferiori
+        clothParticles[Nx][0],
+        clothParticles[0][0],
+        // Metà a sx
+        clothParticles[Nx][Ny/2],
+        // Lato a dx
+        clothParticles[0][Ny/2],
+        // Metà orizzontale sotto
+        clothParticles[Nx/2][0],
+        // Metà orizzontale sopra
+        clothParticles[Nx/2][Ny]
+       
+    
     ];
 
     cornerParticles.forEach((particle, index) => {
@@ -218,8 +242,36 @@ export function sketch() {
         constraints.push(constraint);
     });
 
-    // Initialize the vertices of the cloth
+    // Calcola il punto mediano tra i due anchorPoints superiori e inferiori e centrali
+    const midpointTop = new CANNON.Vec3(
+        (anchorPoints[0].x + anchorPoints[1].x) / 2,
+        (anchorPoints[0].y + anchorPoints[1].y) / 2,
+        (anchorPoints[0].z + anchorPoints[1].z) / 2
+    );
+    const midpointBottom = new CANNON.Vec3(
+        (anchorPoints[2].x + anchorPoints[3].x) / 2,
+        (anchorPoints[2].y + anchorPoints[3].y) / 2,
+        (anchorPoints[2].z + anchorPoints[3].z) / 2
+    );
 
+       /* I due blocchi precedenti sono quelli impostati da Vale
+       io ho aggiunto questi sotto per definire la rotazione intorno ai punti posizionati sul lati verticali (4 e 5)
+       la dicitura  midpoint "centre" l'ho inventata io, è corretta?
+       non ho aggiunto lo stesso blocchetto per i punti 6 e 7 che sarebbero quelli sui
+       due lati orizzonatali eppure non cambia nulla, perchè?? */
+
+    const midpointCentre = new CANNON.Vec3(
+        (anchorPoints[4].x + anchorPoints[5].x) / 2,
+        (anchorPoints[4].y + anchorPoints[5].y) / 2,
+        (anchorPoints[4].z + anchorPoints[5].z) / 2
+    
+    );
+
+
+     
+
+    // Initialize the vertices of the cloth
+    const vertices = [];
     for (let x = 0; x <= Nx; x++) {
         for (let y = 0; y <= Ny; y++) {
             vertices.push(new THREE.Vector3());
@@ -227,7 +279,7 @@ export function sketch() {
     }
     clothGeometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(vertices.length * 3), 3));
 
-    light = new THREE.DirectionalLight(0xffffff, 7)
+    const light = new THREE.DirectionalLight(0xffffff, 7)
     light.position.set(0, 10, -5)
     light.target.position.set(0, 2, 10)
     light.castShadow = true
@@ -241,12 +293,12 @@ export function sketch() {
     const lightHelper = new THREE.DirectionalLightHelper(light, 5);
     // scene.add(lightHelper);
 
-    lightD = new THREE.DirectionalLight(0xffffff, 3)
+    const lightD = new THREE.DirectionalLight(0xffffff, 3)
     lightD.position.set(2, 0, -5)
     lightD.target.position.set(0, 2, 10)
     scene.add(lightD)
 
-    ambientLight = new THREE.AmbientLight(0xffffff)
+    const ambientLight = new THREE.AmbientLight(0xffffff)
     scene.add(ambientLight)
 
     // NOISE
@@ -278,6 +330,7 @@ export function sketch() {
 
         return flowField;
     }
+
 
     // ANIMATE
     const timeStep = 1 / 60
@@ -330,6 +383,51 @@ export function sketch() {
                 }
             }
 
+            
+
+            // Calcola le nuove posizioni degli anchorBodies per il movimento circolare
+            const radius = 8; // Raggio del cerchio
+            const speed = 1.1; // Velocità di rotazione
+
+
+            
+
+            anchorBodies[0].position.set(
+                midpointTop.x + radius * Math.cos(speed * t),
+                midpointTop.y,
+                midpointTop.z + radius * Math.sin(speed * t)
+            );
+
+            anchorBodies[1].position.set(
+                midpointTop.x + radius * Math.cos(speed * t + Math.PI),
+                midpointTop.y,
+                midpointTop.z + radius * Math.sin(speed * t + Math.PI)
+            );
+
+            anchorBodies[2].position.set(
+                midpointBottom.x + radius * Math.cos(speed * t),
+                midpointBottom.y,
+                midpointBottom.z + radius * Math.sin(speed * t)
+            );
+
+            anchorBodies[3].position.set(
+                midpointBottom.x + radius * Math.cos(speed * t + Math.PI),
+                midpointBottom.y,
+                midpointBottom.z + radius * Math.sin(speed * t + Math.PI)
+            );
+
+            anchorBodies[4].position.set(
+                midpointCentre.x,
+                midpointCentre.y,
+                midpointCentre.z
+            );
+
+            anchorBodies[5].position.set(
+                midpointCentre.x + radius * Math.cos(speed * t + Math.PI),
+                midpointCentre.y,
+                midpointCentre.z + radius * Math.sin(speed * t + Math.PI)
+            ); 
+
             const positions = cloth.geometry.attributes.position.array;
             for (let x = 0; x <= Nx; x++) {
                 for (let y = 0; y <= Ny; y++) {
@@ -337,8 +435,8 @@ export function sketch() {
                     const index = (x * (Nx + 1) + y) * 3
                     positions[index] = particle.position.x
                     positions[index + 1] = particle.position.y
-                    positions[index + 2] = particle.position.z
-                }
+                    positions[index + 2] = particle.position.z 
+                } 
             }
             cloth.geometry.attributes.position.needsUpdate = true
         }
@@ -354,34 +452,14 @@ export function sketch() {
 
 export function dispose() {
     cancelAnimationFrame(animation)
-    scene.remove(cloth);
-    clothParticles?.forEach((row) => {
-        row.forEach((particle) => {
-            world.removeBody(particle);
-        });
-    });
-    constraints?.forEach((constraint) => {
-        world.removeConstraint(constraint);
-    });
-    anchorBodies?.forEach((anchorBody) => {
-        world.removeBody(anchorBody);
-    });
-    world.removeBody(groundBody);
-    light?.dispose();
-    lightD?.dispose();
-    // constraints = null;
-    clothParticles = null;
     controls?.dispose()
     clothMaterial?.dispose()
     mirrorMate?.dispose()
     groundGeom?.dispose()
     groundMate?.dispose()
-    clothGeometry?.dispose();
-    // world = null
-    // vertices= null;
+    world = null
     noise3D = null
     flowField = null
-    camera = null
     window?.removeEventListener('resize', onWindowResize)
     window?.removeEventListener('mousemove', onMouseMove)
 }

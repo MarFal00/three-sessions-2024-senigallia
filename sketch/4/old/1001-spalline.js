@@ -1,17 +1,14 @@
-// CLOTH
+//TEST CLOTH + 3D MODEL
 
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
-let scene, camera, animation, onWindowResize, controls, onMouseMove
-let groundGeom
-let groundMate, clothMaterial, mirrorMate, clothGeometry
+let scene, animation, onWindowResize, controls, onMouseMove
+let groundGeom, clothGeometry
+let groundMate, clothMaterial, mirrorMate
 let world, groundBody
 let noise3D
 let cloth, clothParticles, constraints = []
 let flowField
-let light, lightD, ambientLight
-const anchorBodies = [];
-const vertices = [];
 
 export function sketch() {
 
@@ -27,7 +24,7 @@ export function sketch() {
         clothWidth: 10,
         clothHeight: 10,
         clothResolution: 22,
-        // viewgf
+        // view
         lookAtCenter: new THREE.Vector3(0, 5, 3),
         cameraPosition: new THREE.Vector3(0, 1, - 7 - Math.random() * 25),
         autoRotate: false,
@@ -48,7 +45,7 @@ export function sketch() {
     let paused = false;
 
     // CAMERA
-    camera = new THREE.PerspectiveCamera(p.camera, window.innerWidth / window.innerHeight, near, far)
+    let camera = new THREE.PerspectiveCamera(p.camera, window.innerWidth / window.innerHeight, near, far)
     camera.position.copy(p.cameraPosition)
     camera.lookAt(p.lookAtCenter)
 
@@ -157,9 +154,8 @@ export function sketch() {
             )
 
             const particle = new CANNON.Body({
-                mass: mass,
                 // mass: y === Ny ? 0 : mass, // line
-                // mass: y >= Ny - 2 && x >= Nx - 2 || y >= Ny - 2 && x <= 2 ? 0 : mass, // arms
+                mass: y >= Ny - 2 && x >= Nx - 2 || y >= Ny - 2 && x <= 2 ? 0 : mass, // arms
                 // mass: y >= Ny - 2 && x >= Nx - 1 || y >= Ny - 2 && x <= 1 || y <= 2 && x <= 1 || y <= 2 && x >= Nx - 1 ? 0 : mass, // 4 arms
                 position: hangingPosition,
                 shape: new CANNON.Particle(),
@@ -181,45 +177,13 @@ export function sketch() {
             } else if (x === Nx && y < Ny) {
                 connectParticles(x, y, x, y + 1);
             } else if (x < Nx && y === Ny) {
-                connectParticles(x, y, x + 1, y);
+                connectParticles(x, y, x +1, y);
             }
         }
     }
 
-    // Aggiungi le corde elastiche
-    const anchorDistance = 2;
-    const anchorPoints = [
-        // new CANNON.Vec3(-cWidth / 2, p.floor + anchorDistance, -cHeight / 2),
-        // new CANNON.Vec3(cWidth / 2, p.floor + anchorDistance, -cHeight / 2),
-        new CANNON.Vec3(cWidth / 2 + .2, p.floor + cHeight + 6 + anchorDistance, cHeight / 2),
-        new CANNON.Vec3(-cWidth / 2 - .2, p.floor + cHeight + 6 + anchorDistance, cHeight / 2),
-    ];
-    anchorPoints.forEach((point) => {
-        const anchorBody = new CANNON.Body({
-            mass: 0,
-            position: point,
-            shape: new CANNON.Particle(),
-        });
-        anchorBodies.push(anchorBody);
-        world.addBody(anchorBody);
-    });
-
-    const cornerParticles = [
-        // clothParticles[0][0],
-        // clothParticles[Nx][0],
-        clothParticles[Nx][Ny],
-        clothParticles[0][Ny],
-    ];
-
-    cornerParticles.forEach((particle, index) => {
-        const anchorBody = anchorBodies[index];
-        const constraint = new CANNON.DistanceConstraint(particle, anchorBody, anchorDistance);
-        world.addConstraint(constraint);
-        constraints.push(constraint);
-    });
-
     // Initialize the vertices of the cloth
-
+    const vertices = [];
     for (let x = 0; x <= Nx; x++) {
         for (let y = 0; y <= Ny; y++) {
             vertices.push(new THREE.Vector3());
@@ -227,7 +191,7 @@ export function sketch() {
     }
     clothGeometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(vertices.length * 3), 3));
 
-    light = new THREE.DirectionalLight(0xffffff, 7)
+    const light = new THREE.DirectionalLight(0xffffff, 7)
     light.position.set(0, 10, -5)
     light.target.position.set(0, 2, 10)
     light.castShadow = true
@@ -241,12 +205,12 @@ export function sketch() {
     const lightHelper = new THREE.DirectionalLightHelper(light, 5);
     // scene.add(lightHelper);
 
-    lightD = new THREE.DirectionalLight(0xffffff, 3)
+    const lightD = new THREE.DirectionalLight(0xffffff, 3)
     lightD.position.set(2, 0, -5)
     lightD.target.position.set(0, 2, 10)
     scene.add(lightD)
 
-    ambientLight = new THREE.AmbientLight(0xffffff)
+    const ambientLight = new THREE.AmbientLight(0xffffff)
     scene.add(ambientLight)
 
     // NOISE
@@ -354,34 +318,20 @@ export function sketch() {
 
 export function dispose() {
     cancelAnimationFrame(animation)
-    scene.remove(cloth);
-    clothParticles?.forEach((row) => {
-        row.forEach((particle) => {
-            world.removeBody(particle);
-        });
-    });
-    constraints?.forEach((constraint) => {
-        world.removeConstraint(constraint);
-    });
-    anchorBodies?.forEach((anchorBody) => {
-        world.removeBody(anchorBody);
-    });
-    world.removeBody(groundBody);
-    light?.dispose();
-    lightD?.dispose();
-    // constraints = null;
-    clothParticles = null;
     controls?.dispose()
     clothMaterial?.dispose()
     mirrorMate?.dispose()
     groundGeom?.dispose()
     groundMate?.dispose()
-    clothGeometry?.dispose();
-    // world = null
-    // vertices= null;
+
+    cloth.geometry.dispose()
+    clothGeometry.dispose()
+    constraints.forEach(constraint => world.removeConstraint(constraint))
+    clothParticles.forEach(row => row.forEach(particle => world.removeBody(particle)))
+
+    world = null
     noise3D = null
     flowField = null
-    camera = null
     window?.removeEventListener('resize', onWindowResize)
     window?.removeEventListener('mousemove', onMouseMove)
 }
