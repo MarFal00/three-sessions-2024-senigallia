@@ -99,7 +99,7 @@ export function sketch() {
     controls = new OrbitControls(camera, renderer.domElement);
     controls.enablePan = false;
     controls.enableDamping = true;
-    controls.dampingFactor = 0.05;
+    controls.dampingFactor = 0.005;
     controls.minDistance = 5;
     controls.maxDistance = 40;
     controls.maxPolarAngle = Math.PI / 2;
@@ -116,7 +116,7 @@ export function sketch() {
     const clothGeometry = new THREE.PlaneGeometry(cWidth, cHeight, Nx, Ny);
     mirrorMate = new THREE.MeshPhongMaterial({
         color: 0x444444,
-        envMap: cubeTextures[0].texture,
+        envMap: cubeTextures[1].texture,
         side: THREE.DoubleSide,
         flatShading: true,
         reflectivity: 1,
@@ -272,7 +272,7 @@ export function sketch() {
     clothGeometry2.setAttribute('position', new THREE.BufferAttribute(new Float32Array(vertices2.length * 3), 3));
 
     // LIGHTS
-    const light = new THREE.DirectionalLight(0xffcfc0, 2);
+    const light = new THREE.DirectionalLight(0xffffff, 4 * PI);
     light.position.set(0, 15, 0);
     light.target.position.set(0, 2, 0);
     light.castShadow = true;
@@ -282,11 +282,13 @@ export function sketch() {
     light.shadow.bias = 0.0001;
     light.shadow.mapSize.width = shadowMapWidth;
     light.shadow.mapSize.height = shadowMapHeight;
+    light.decay = 0;
     scene.add(light);
 
-    const lightD = new THREE.DirectionalLight(0xffcfc0, 3);
+    const lightD = new THREE.DirectionalLight(0xffffff, 10 * PI);
     lightD.position.set(0, 2, 0);
     lightD.target.position.set(0, 8, 0);
+    lightD.decay = 0
     scene.add(lightD);
     const lightHelperD = new THREE.DirectionalLightHelper(lightD, 5);
 

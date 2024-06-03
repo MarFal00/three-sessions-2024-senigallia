@@ -1,4 +1,4 @@
-// CLOTH FALLING
+// CLOTH FALLINT CAMERA HIGH
 
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
@@ -28,15 +28,15 @@ export function sketch() {
         clothResolution: 17,
         clothElasticity: 1,
         // view
-        lookAtCenter: new THREE.Vector3(0, 4, 0),
-        cameraPosition: new THREE.Vector3(-10 + Math.random() * 20, 0, 20),
+        lookAtCenter: new THREE.Vector3(0, 0, 0),
+        cameraPosition: new THREE.Vector3(-10 + Math.random() * 20, 25, 15),
         autoRotate: true,
-        autoRotateSpeed: -1.5 + Math.random() * 3,
+        autoRotateSpeed: -.2 + Math.random() * .4,
         camera: 35,
         // world
         background: new THREE.Color(0x000000),
         clothMass: 1,
-        gravity: -  Math.random() * .5,
+        gravity: -  Math.random() * 1.5,
         wind: true,
         windStrength: .1 + Math.random() * .2,
         mouse: false,
@@ -194,6 +194,7 @@ export function sketch() {
     }
 
     // Initialize the vertices of the cloth
+    const vertices = [];
     for (let x = 0; x <= Nx; x++) {
         for (let y = 0; y <= Ny; y++) {
             vertices.push(new THREE.Vector3());
@@ -201,7 +202,7 @@ export function sketch() {
     }
     clothGeometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(vertices.length * 3), 3));
 
-     light = new THREE.DirectionalLight(0xffffff, 2)
+    light = new THREE.DirectionalLight(0xffffff, 2 * PI)
     light.position.set(0, 15, 0)
     light.target.position.set(0, 2, 0)
     light.castShadow = true
@@ -211,18 +212,20 @@ export function sketch() {
     light.shadow.bias = 0.0001
     light.shadow.mapSize.width = shadowMapWidth
     light.shadow.mapSize.height = shadowMapHeight
+    light.decay = 0
     scene.add(light)
     // const lightHelper = new THREE.DirectionalLightHelper(light, 5);
     // scene.add(lightHelper);
 
-     lightD = new THREE.DirectionalLight(0xffffff, 3)
+    lightD = new THREE.DirectionalLight(0xffffff, 3 * PI)
     lightD.position.set(0, 2, 0)
     lightD.target.position.set(0, 8, 0)
+    lightD.decay = 0
     scene.add(lightD)
     const lightHelperD = new THREE.DirectionalLightHelper(lightD, 5);
     // scene.add(lightHelperD);
 
-    // ambientLight = new THREE.AmbientLight(0xffffff)
+    //  ambientLight = new THREE.AmbientLight(0xffffff)
     // scene.add(ambientLight)
 
     // NOISE
